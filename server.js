@@ -15,23 +15,22 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-async function run() {
+async function findUser(uname) {
     try {
-      
-      // Get the database and collection on which to run the operation
-      const database = client.db("react-photo-editor");
-      const movies = database.collection("users");
-      // Query for a movie that has the title 'The Room'
-      const query = { username: "poori" };
-      // Execute query
-      const movie = await movies.findOne(query)
-      // Print the document returned by findOne()
-      console.log(movie);
+        // Get the database and collection on which to run the operation
+        const database = client.db("react-photo-editor");
+        const users = database.collection("users");
+        // Query for a movie that has the title 'The Room'
+        const query = { username: uname };
+        // Execute query
+        const user = await users.findOne(query)
+        return user;
     } finally {
-      await client.close();
+        await client.close();
     }
-  }
-  run().catch(console.dir);
+}
+
+run("poorei").catch(console.dir);
 
 
 
@@ -43,18 +42,6 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true }
 });
 
-// Create a Mongoose model based on the schema
-const User = mongoose.model('User', userSchema);
-
-app.get('/users', async (req, res) => {
-    try {
-        // Fetch all users from the database 
-        const users = await User.find();
-        res.json(users);
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
 
 app.post('/register', async (req, res) => {
     try {
@@ -84,7 +71,7 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         // Find the user in the database by username
-        const user = await User.findOne({ username: req.body.username });
+        const user = await findUser(req.body.username);
         if (!user) {
             return res.status(400).send('User not found');
         }
