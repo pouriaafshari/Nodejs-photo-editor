@@ -67,7 +67,8 @@ app.post('/signup', async (req, res) => {
   };
   
   try {
-    if (findUser(req.body.username) != null) {
+    const user = await findUser(req.body.username);
+    if (user != null) {
       res.status(400).send('Username is taken')
       return
     }
