@@ -32,6 +32,20 @@ async function findUser(uname) {
   return user;
 }
 
+async function addUser(userData) {
+  const database = client.db("react-photo-editor");
+  const users = database.collection("users");
+
+  try {
+    const result = await users.insertOne(userData);
+    console.log(`User added successfully with _id: ${result.insertedId}`);
+    return result.insertedId;
+  } catch (error) {
+    console.error("Error adding user:", error);
+    throw error; // You might want to handle this error in a more appropriate way in your application.
+  }
+}
+
 app.post('/login', async (req, res) => {
   try {
     const user = await findUser(req.body.username);
@@ -43,6 +57,28 @@ app.post('/login', async (req, res) => {
     res.status(500).send(error.message);
   }
 });
+
+app.post('/signup', async (req, res) => {
+  const newUser = {
+    username: req.body.username,
+    password: req.body.password,
+    email: req.body.email,
+    premium: false,
+  };
+  
+  try {
+    if (findUser(req.body.username) != null) {
+      res.status(400).send('Username is taken')
+      return
+    }
+    const insertedUserId = await addUser(newUser);
+    console.log(`User added with ID: ${insertedUserId}`);
+    return res.status(200).send('yes')
+  } catch (error) {
+    console.error("Error adding user:", error);
+  }
+  
+})
 
 // Handle MongoDB reconnection events
 client.on('reconnect', () => {
