@@ -32,6 +32,16 @@ async function findUser(uname) {
   return user;
 }
 
+async function hashPassword(password) {
+  const saltRounds = 10;
+  const salt = await bcrypt.genSalt(saltRounds);
+  return bcrypt.hash(password, salt);
+}
+
+async function comparePasswords(plainPassword, hashedPassword) {
+  return bcrypt.compare(plainPassword, hashedPassword);
+}
+
 async function addUser(userData) {
   const database = client.db("react-photo-editor");
   const users = database.collection("users");
@@ -52,7 +62,15 @@ app.post('/login', async (req, res) => {
     if (!user) {
       return res.status(400).send('User not found');
     }
-    return res.status(200).send('yes')
+
+    // Compare the entered password with the hashed password stored in the database
+    const passwordMatch = await comparePasswords(req.body.password, user.password);
+
+    if (passwordMatch) {
+      return res.status(200).send('Login successful');
+    } else {
+      return res.status(400).send('Invalid password');
+    }
   } catch (error) {
     res.status(500).send(error.message);
   }
@@ -61,25 +79,30 @@ app.post('/login', async (req, res) => {
 app.post('/signup', async (req, res) => {
   const newUser = {
     username: req.body.username,
-    password: req.body.password,
     email: req.body.email,
     premium: false,
   };
-  
+
   try {
-    const user = await findUser(req.body.username);
-    if (user != null) {
-      res.status(400).send('Username is taken')
-      return
+    // Check if the username is already taken
+    const existingUser = await findUser(req.body.username);
+    if (existingUser) {
+      res.status(400).send('Username is taken');
+      return;
     }
+
+    // Hash the password with an explicit salt before storing it in the database
+    const hashedPassword = await hashPassword(req.body.password);
+    newUser.password = hashedPassword;
+
     const insertedUserId = await addUser(newUser);
     console.log(`User added with ID: ${insertedUserId}`);
-    return res.status(200).send('yes')
+    return res.status(200).send('User registered successfully');
   } catch (error) {
     console.error("Error adding user:", error);
+    res.status(500).send(error.message);
   }
-  
-})
+});
 
 // Handle MongoDB reconnection events
 client.on('reconnect', () => {
