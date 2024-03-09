@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const cors = require('cors')
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express();
 app.use(express.json());
@@ -67,7 +68,9 @@ app.post('/login', async (req, res) => {
     const passwordMatch = await comparePasswords(req.body.password, user.password);
 
     if (passwordMatch) {
-      return res.status(200).send('Login successful');
+      const userObj = { username: user.username, prime: user.prime };
+      const newAccessToken = jwt.sign(userObj, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+      return res.json({ Accesstoken: newAccessToken });
     } else {
       return res.status(400).send('Invalid password');
     }
@@ -80,7 +83,7 @@ app.post('/signup', async (req, res) => {
   const newUser = {
     username: req.body.username,
     email: req.body.email,
-    premium: false,
+    prime: "false",
   };
 
   try {
@@ -97,12 +100,35 @@ app.post('/signup', async (req, res) => {
 
     const insertedUserId = await addUser(newUser);
     console.log(`User added with ID: ${insertedUserId}`);
-    return res.status(200).send('User registered successfully');
+    
+    const userObj = { username: newUser.username, prime: "false" };
+    const newAccessToken = jwt.sign(userObj, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+    return res.json({ Accesstoken: newAccessToken });
   } catch (error) {
     console.error("Error adding user:", error);
     res.status(500).send(error.message);
   }
 });
+
+app.get('/auth', authenticateToken, (req, res) => {
+  res.json({ prime: req.user.prime });
+});
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+    if (err) {
+      console.error(err);
+      return res.sendStatus(403);
+    }
+
+    req.user = user;
+    next();
+  });
+}
 
 // Handle MongoDB reconnection events
 client.on('reconnect', () => {
