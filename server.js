@@ -113,7 +113,7 @@ app.post('/signup', async (req, res) => {
 });
 
 app.get('/auth', authenticateToken, (req, res) => {
-  res.json({ prime: req.user.prime });
+  res.status(200).send("Token is valid");
 });
 
 function authenticateToken(req, res, next) {
@@ -126,8 +126,6 @@ function authenticateToken(req, res, next) {
       console.error(err);
       return res.sendStatus(403);
     }
-
-    req.user = user;
     next();
   });
 }
